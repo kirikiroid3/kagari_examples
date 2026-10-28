@@ -1,0 +1,75 @@
+//! The characters: a `Character` constant and a module of assets for each one. Each character has
+//! one kana on its face and its own colour: あ red, い yellow, う green, え blue, お purple.
+
+use std::screen::BOTTOM_CENTER;
+
+pub const A: Character = character(EntityId(1)).anchor(BOTTOM_CENTER);
+pub const I: Character = character(EntityId(2)).anchor(BOTTOM_CENTER);
+pub const U: Character = character(EntityId(3)).anchor(BOTTOM_CENTER);
+pub const E: Character = character(EntityId(4)).anchor(BOTTOM_CENTER);
+pub const O: Character = character(EntityId(5)).anchor(BOTTOM_CENTER);
+
+/// The speaker names.
+pub mod NAME {
+    pub const A: Text = "あ・Aka";
+    pub const I: Text = "い・Ki";
+    pub const U: Text = "う・Midori";
+    pub const E: Text = "え・Ao";
+    pub const O: Text = "お・Murasaki";
+}
+
+/// Each character's own slot, left to right. The feet stand behind the message window, so the
+/// whole face stays above it.
+pub mod SLOT {
+    pub const A: Point = point(160, 640);
+    pub const I: Point = point(400, 640);
+    pub const U: Point = point(640, 640);
+    pub const E: Point = point(880, 640);
+    pub const O: Point = point(1120, 640);
+}
+
+pub mod A {
+    pub const NORMAL: ImageAsset = asset("characters/a/image/normal.png");
+    pub const HAPPY: ImageAsset = asset("characters/a/image/happy.png");
+    pub const V_A: VoiceAsset = asset("characters/a/voice/a.wav");
+    pub const V_SA: VoiceAsset = asset("characters/a/voice/sa.wav");
+    pub const V_HA: VoiceAsset = asset("characters/a/voice/ha.wav");
+    pub const V_WA: VoiceAsset = asset("characters/a/voice/wa.wav");
+}
+
+pub mod I {
+    pub const NORMAL: ImageAsset = asset("characters/i/image/normal.png");
+    pub const HAPPY: ImageAsset = asset("characters/i/image/happy.png");
+    pub const V_I: VoiceAsset = asset("characters/i/voice/i.wav");
+    pub const V_ZA: VoiceAsset = asset("characters/i/voice/za.wav");
+    pub const V_PA: VoiceAsset = asset("characters/i/voice/pa.wav");
+    pub const V_YA: VoiceAsset = asset("characters/i/voice/ya.wav");
+}
+
+pub mod U {
+    pub const NORMAL: ImageAsset = asset("characters/u/image/normal.png");
+    pub const HAPPY: ImageAsset = asset("characters/u/image/happy.png");
+    pub const V_U: VoiceAsset = asset("characters/u/voice/u.wav");
+    pub const V_TA: VoiceAsset = asset("characters/u/voice/ta.wav");
+    pub const V_MA: VoiceAsset = asset("characters/u/voice/ma.wav");
+    pub const V_N: VoiceAsset = asset("characters/u/voice/n.wav");
+}
+
+pub mod E {
+    pub const NORMAL: ImageAsset = asset("characters/e/image/normal.png");
+    pub const HAPPY: ImageAsset = asset("characters/e/image/happy.png");
+    pub const V_E: VoiceAsset = asset("characters/e/voice/e.wav");
+    pub const V_GA: VoiceAsset = asset("characters/e/voice/ga.wav");
+    pub const V_NA: VoiceAsset = asset("characters/e/voice/na.wav");
+    pub const V_BA: VoiceAsset = asset("characters/e/voice/ba.wav");
+}
+
+pub mod O {
+    pub const NORMAL: ImageAsset = asset("characters/o/image/normal.png");
+    pub const HAPPY: ImageAsset = asset("characters/o/image/happy.png");
+    pub const V_O: VoiceAsset = asset("characters/o/voice/o.wav");
+    pub const V_KI: VoiceAsset = asset("characters/o/voice/ki.wav");
+    pub const V_DA: VoiceAsset = asset("characters/o/voice/da.wav");
+    pub const V_RA: VoiceAsset = asset("characters/o/voice/ra.wav");
+    pub const V_WO: VoiceAsset = asset("characters/o/voice/wo.wav");
+}

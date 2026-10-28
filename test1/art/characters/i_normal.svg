@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="448" viewBox="0 0 400 640">
+  <path d="M70 640 L95 420 Q200 370 305 420 L330 640 Z" fill="#FBC02D" stroke="#8A6400" stroke-width="6"/>
+  <circle cx="200" cy="210" r="175" fill="#FBC02D" stroke="#8A6400" stroke-width="6"/>
+  <circle cx="200" cy="215" r="138" fill="#FFF8F0" stroke="#8A6400" stroke-width="4"/>
+  <text x="200" y="68" font-family="Noto Sans CJK JP" font-size="34" font-weight="bold" fill="#FFFFFF" text-anchor="middle">I</text>
+  <text x="200" y="283" font-family="Noto Sans CJK JP" font-size="190" font-weight="bold" fill="#8A6400" text-anchor="middle">い</text>
+</svg>

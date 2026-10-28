@@ -1,0 +1,229 @@
+//! な row, ending at the hub の. From の the player visits は, ば and ぱ rows in any order, each
+//! at most once, and every one of them comes back to の. ま opens after two of them.
+
+use crate::effect::{ENTER, FACE, keep, keyframe};
+use crate::scripts::assets::{BG, MUSIC, SE};
+use crate::scripts::characters::{A, E, I, NAME, SLOT};
+use std::narrative::text::{reveal_instant, speed_scale};
+
+pub static mut SEEN_HA: bool = false;
+pub static mut SEEN_BA: bool = false;
+pub static mut SEEN_PA: bool = false;
+/// How many of は, ば and ぱ rows were visited.
+static mut VISITS: Int<0, 3> = 0;
+
+enum Hub {
+    Ha,
+    Ba,
+    Pa,
+    Ma,
+}
+
+/// The message just before の.
+enum From {
+    Ne,
+    Ho,
+    Bo,
+    Po,
+}
+
+const fn from_text(from: From) -> Text {
+    match from {
+        From::Ne => "ね",
+        From::Ho => "ほ",
+        From::Bo => "ぼ",
+        From::Po => "ぽ",
+    }
+}
+
+#[scene]
+pub pushdown fn RowNa() {
+    s!(
+        who = NAME::E,
+        voice = E::V_NA,
+        render = enter_na,
+        t!["ここは「な」です。前のメッセージは「と」か「ど」です。次のメッセージは「に」です。"],
+    );
+    s!(t!["ここは「に」です。前は「な」、次は「ぬ」。"]);
+    s!(
+        t![
+            !["ここは「ぬ」です。前のメッセージは「に」です。次のメッセージは「ね」です。"](reveal_instant())
+        ],
+    );
+    s!(
+        t![
+            "ここは「ね」です。前のメッセージは「ぬ」です。次のメッセージは「の」、ここから hub です。"
+        ],
+    );
+    let mut from = From::Ne;
+    loop {
+        s!(
+            render = hub,
+            t![
+                "ここは「の」です。前のメッセージは「"
+                {from_text(from)}
+                "」です。は・ば・ぱ のうち "
+                {VISITS}
+                " 行を訪れました。次は選んでください。"
+            ],
+        );
+        match choice!{
+            id = "hub",
+            render = if VISITS < 2 { ma_locked } else { keep },
+            t!["Go to は"] if !SEEN_HA => Hub::Ha,
+            t!["Go to ば"] if !SEEN_BA => Hub::Ba,
+            t!["Go to ぱ"] if !SEEN_PA => Hub::Pa,
+            t!["Go to ま"] if VISITS >= 2 => Hub::Ma,
+        } {
+            Hub::Ha => {
+                RowHa();
+                from = From::Ho;
+            }
+            Hub::Ba => {
+                RowBa();
+                from = From::Bo;
+            }
+            Hub::Pa => {
+                RowPa();
+                from = From::Po;
+            }
+            Hub::Ma => break,
+        }
+    }
+}
+
+#[scene]
+pushdown fn RowHa() {
+    SEEN_HA = true;
+    VISITS += 1;
+    s!(
+        who = NAME::A,
+        voice = A::V_HA,
+        render = enter_ha,
+        t!["ここは「は」です。前のメッセージは「の」です。次のメッセージは「ひ」です。"],
+    );
+    s!(t!["ここは「ひ」です。前のメッセージは「は」です。次のメッセージは「ふ」です。"]);
+    s!(
+        who = NAME::A,
+        render = a_happy,
+        t!["ここは「ふ」です。前のメッセージは「ひ」です。次のメッセージは「へ」です。"],
+    );
+    s!(t!["ここは「へ」(he) です。前のメッセージは「ふ」です。次のメッセージは「ほ」です。"]);
+    s!(t!["ここは「ほ」です。前のメッセージは「へ」です。次は hub の「の」に戻ります。"]);
+}
+
+#[scene]
+pushdown fn RowBa() {
+    SEEN_BA = true;
+    VISITS += 1;
+    s!(
+        who = NAME::E,
+        voice = E::V_BA,
+        render = enter_ba,
+        t!["ここは「ば」です。前のメッセージは「の」です。次のメッセージは「び」です。"],
+    );
+    s!(t!["ここは「び」です。前のメッセージは「ば」です。次のメッセージは「ぶ」です。"]);
+    s!(
+        render = knock,
+        t!["ここは「ぶ」(bu) です。前のメッセージは「び」です。次のメッセージは「べ」です。"],
+    );
+    s!(
+        t![
+            "ここは"
+            ["「べ」"]("be")
+            "です。前のメッセージは「ぶ」です。次のメッセージは「ぼ」です。"
+        ],
+    );
+    s!(t!["ここは「ぼ」です。前のメッセージは「べ」です。次は hub の「の」に戻ります。"]);
+}
+
+#[scene]
+pushdown fn RowPa() {
+    SEEN_PA = true;
+    VISITS += 1;
+    s!(
+        who = NAME::I,
+        voice = I::V_PA,
+        render = enter_pa,
+        t!["ここは「ぱ」です。前のメッセージは「の」です。次のメッセージは「ぴ」です。"],
+    );
+    s!(
+        render = blip,
+        t![
+            !["ここは「ぴ」です。前のメッセージは「ぱ」です。次のメッセージは「ぷ」です。"](speed_scale(
+                3.0,
+            ))
+        ],
+    );
+    s!(
+        render = blip,
+        t![
+            !["ここは「ぷ」です。前のメッセージは「ぴ」です。次のメッセージは「ぺ」です。"](speed_scale(
+                0.5,
+            ))
+        ],
+    );
+    s!(
+        render = blip,
+        t!["ここは「ぺ」(pe) です。前のメッセージは「ぷ」です。次のメッセージは「ぽ」です。"],
+    );
+    s!(
+        render = blip,
+        t!["ここは「ぽ」です。前のメッセージは「ぺ」です。次は hub の「の」に戻ります。"],
+    );
+}
+
+const fn enter_na(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::NA, MUSIC::SYMPHONY);
+    E.show(&mut screen, E::NORMAL, SLOT::E, ENTER);
+    screen
+}
+
+/// The hub: the な background, nobody on stage, and a hum on the ambience channel.
+const fn hub(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::NA, MUSIC::SYMPHONY);
+    screen.ambience(0).change(looped(SE::HUM)).apply_animation(crossfade(secs(1)));
+    screen
+}
+
+/// ま is shown greyed out until two rows have been visited.
+const fn ma_locked(mut screen: Screen) -> Screen {
+    screen.choice_menu().disabled_arm(3, t!["Go to ま (locked)"]);
+    screen
+}
+
+const fn enter_ha(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::HA, MUSIC::SYMPHONY);
+    A.show(&mut screen, A::NORMAL, SLOT::A, ENTER);
+    screen
+}
+
+const fn a_happy(mut screen: Screen) -> Screen {
+    A.face(&mut screen, A::HAPPY, FACE);
+    A.move_to(&mut screen, SLOT::U, tween(ms(800)));
+    screen
+}
+
+const fn enter_ba(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::BA, MUSIC::SYMPHONY);
+    E.show(&mut screen, E::NORMAL, SLOT::E, ENTER);
+    screen
+}
+
+const fn knock(mut screen: Screen) -> Screen {
+    screen.play(sound(SE::KNOCK));
+    screen.play(sound(SE::KNOCK).delay(ms(300)));
+    E.act(&mut screen, nod(16, ms(300)));
+    screen
+}
+
+const fn enter_pa(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::PA, MUSIC::SYMPHONY);
+    I.show(&mut screen, I::NORMAL, SLOT::I, ENTER);
+    screen
+}
+
+const fn blip(mut screen: Screen) -> Screen {
+    screen.play(sound(SE::BLIP));
+    screen
+}

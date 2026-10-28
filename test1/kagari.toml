@@ -1,0 +1,15 @@
+[project]
+name = "test1"
+version = "0.1.0"
+entry = "src/main.kis"
+
+[toolchain]
+kagari = "0.1"
+
+[assets]
+dir = "assets"
+
+[build]
+targets = ["v0"]
+runtime-compatibility = ["native_v0"]
+out-dir = "target"

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#F57C00"/>
+  <circle cx="640" cy="330" r="250" fill="#FFFFFF" fill-opacity="0.15"/>
+  <text x="640" y="460" font-family="Noto Sans CJK JP" font-size="360" font-weight="bold" fill="#FFFFFF" text-anchor="middle">や</text>
+  <text x="640" y="660" font-family="Noto Sans CJK JP" font-size="64" font-weight="bold" fill="#FFFFFF" text-anchor="middle">END 「や」</text>
+</svg>

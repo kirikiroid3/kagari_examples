@@ -1,0 +1,100 @@
+//! あ row: あ い う え お. Each of the five characters says its own kana.
+
+use super::Next;
+use crate::effect::{ENTER, keyframe};
+use crate::scripts::assets::{BG, MUSIC, SE};
+use crate::scripts::characters::{A, E, I, NAME, O, SLOT, U};
+
+enum Go {
+    Ka,
+    Ga,
+    Ma,
+}
+
+#[scene]
+pub pushdown fn RowA(cleared: Int<0, 3>) -> Next {
+    s!(
+        who = NAME::A,
+        voice = A::V_A,
+        render = enter_a,
+        t![
+            "ここは「あ」です。最初のメッセージなので、前のメッセージはありません。次のメッセージは「い」です。"
+        ],
+    );
+    s!(
+        who = NAME::I,
+        voice = I::V_I,
+        render = enter_i,
+        t!["ここは「い」です。前のメッセージは「あ」、次のメッセージは「う」です。"],
+    );
+    s!(
+        who = NAME::U,
+        voice = U::V_U,
+        render = enter_u,
+        t!["ここは「う」です。前のメッセージは「い」です。次のメッセージは「え」です。"],
+    );
+    s!(
+        who = NAME::E,
+        voice = E::V_E,
+        render = enter_e,
+        t!["ここは「え」です。前のメッセージは「う」です。次のメッセージは「お」です。"],
+    );
+    if cleared == 3 {
+        s!(
+            who = NAME::O,
+            render = enter_o,
+            t![
+                "ここは「お」です。前のメッセージは「え」です。次は「か」か「が」、"
+                !["または shortcut で「ま」"](bold().and(color_text(rgb(255, 210, 80))))
+                "です。"
+            ],
+        );
+    } else {
+        s!(
+            who = NAME::O,
+            voice = O::V_O,
+            render = enter_o,
+            t![
+                "ここは「お」です。前のメッセージは「え」です。次は「か」か「が」、どちらかを選んでください。"
+            ],
+        );
+    }
+    match choice!{
+        id = "row_a",
+        t!["Go to か"] => Go::Ka,
+        t!["Go to が"] => Go::Ga,
+        t!["Go to ま (shortcut)"] if cleared == 3 => Go::Ma,
+    } {
+        Go::Ka => Next::Ka,
+        Go::Ga => Next::Ga,
+        Go::Ma => Next::Ma,
+    }
+}
+
+const fn enter_a(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::A, MUSIC::NOCTURNE);
+    A.show(&mut screen, A::NORMAL, SLOT::A, ENTER);
+    screen
+}
+
+const fn enter_i(mut screen: Screen) -> Screen {
+    I.show(&mut screen, I::NORMAL, SLOT::I, ENTER);
+    screen
+}
+
+const fn enter_u(mut screen: Screen) -> Screen {
+    U.show(&mut screen, U::NORMAL, SLOT::U, ENTER);
+    U.act(&mut screen, jump(30, ms(400)));
+    screen
+}
+
+const fn enter_e(mut screen: Screen) -> Screen {
+    E.show(&mut screen, E::NORMAL, SLOT::E, ENTER);
+    screen
+}
+
+const fn enter_o(mut screen: Screen) -> Screen {
+    O.show(&mut screen, O::NORMAL, SLOT::O, ENTER);
+    screen.play(sound(SE::CHIME));
+    screen
+}

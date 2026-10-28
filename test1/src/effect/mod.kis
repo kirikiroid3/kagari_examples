@@ -1,0 +1,19 @@
+//! Shared animation constants and render helpers.
+
+pub const ENTER: Tween = tween(ms(300));
+pub const BG_FADE: Transition = fade(ms(500));
+pub const FACE: Transition = fade(ms(200));
+
+/// A keyframe: a fresh screen, independent of the screen before it, showing `bg` and playing
+/// `music`. Every row starts with one, so rows reached from several places look the same.
+pub const fn keyframe(bg: ImageAsset, music: AudioAsset) -> Screen {
+    let mut screen = Screen::empty();
+    screen.background().change(bg).apply_animation(BG_FADE);
+    screen.music().change(looped(music)).apply_animation(crossfade(secs(1)));
+    screen
+}
+
+/// A render that changes nothing.
+pub const fn keep(screen: Screen) -> Screen {
+    screen
+}

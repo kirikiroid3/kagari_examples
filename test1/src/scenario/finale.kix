@@ -1,0 +1,235 @@
+//! ま row, ら row (with a random branch), わ row and the three endings や, を and ん.
+
+use super::hub::{SEEN_BA, SEEN_HA, SEEN_PA};
+use super::{CLEARED_N, CLEARED_WO, CLEARED_YA, Ending};
+use crate::effect::{ENTER, FACE, keep, keyframe};
+use crate::scripts::assets::{BG, MUSIC, SE};
+use crate::scripts::characters::{A, E, I, NAME, O, SLOT, U};
+use std::narrative::text::italic;
+use std::stage::hide_all;
+
+enum Coin {
+    Heads,
+    Tails,
+}
+
+enum GoRo {
+    Ya,
+    Wa,
+    N,
+}
+
+/// `via_hub`: whether ま comes after の (else after お, by the shortcut).
+#[scene]
+pub pushdown fn RowMa(via_hub: bool) -> Ending {
+    if via_hub {
+        s!(
+            who = NAME::U,
+            voice = U::V_MA,
+            render = enter_ma,
+            t!["ここは「ま」です。前のメッセージは「の」です。次のメッセージは「み」です。"],
+        );
+    } else {
+        s!(
+            who = NAME::U,
+            render = enter_ma,
+            t![
+                "ここは「ま」です。前のメッセージは「お」です (shortcut!)。次のメッセージは「み」です。"
+            ],
+        );
+    }
+    s!(t!["ここは「み」です。前のメッセージは「ま」です。次のメッセージは「む」です。"]);
+    s!(
+        who = NAME::U,
+        render = u_happy,
+        t!["ここは「む」です。前のメッセージは「み」です。次のメッセージは「め」です。"],
+    );
+    s!(t!["ここは「め」(me) です。前のメッセージは「む」です。次のメッセージは「も」です。"]);
+    s!(t!["ここは「も」です。前のメッセージは「め」です。次のメッセージは「ら」です。"]);
+    RowRa()
+}
+
+#[scene]
+pushdown fn RowRa() -> Ending {
+    s!(
+        who = NAME::O,
+        voice = O::V_RA,
+        render = enter_ra,
+        t![
+            "ここは「ら」です。前のメッセージは「も」です。次は「り」か「る」、ランダムに決まります。"
+        ],
+    );
+    match rng_choose::<Coin>() {
+        Coin::Heads => s!(
+            t!["ここは「り」です。前のメッセージは「ら」です。次のメッセージは「る」です。"],
+        ),
+        Coin::Tails => {}
+    }
+    s!(t!["ここは「る」です。前のメッセージは「ら」か「り」です。次のメッセージは「れ」です。"]);
+    s!(
+        who = NAME::O,
+        render = o_happy,
+        t!["ここは「れ」です。前のメッセージは「る」です。次のメッセージは「ろ」です。"],
+    );
+    let all_rows = SEEN_HA && SEEN_BA && SEEN_PA;
+    if all_rows {
+        s!(
+            t![
+                "ここは「ろ」です。前のメッセージは「れ」です。次は「や」「わ」、そして"
+                !["「ん」"](bold())
+                "も選べます。"
+            ],
+        );
+    } else {
+        s!(t!["ここは「ろ」です。前のメッセージは「れ」です。次は「や」か「わ」です。"]);
+    }
+    match choice!{
+        id = "row_ra",
+        render = if all_rows { keep } else { n_locked },
+        t!["Go to や"] => GoRo::Ya,
+        t!["Go to わ"] => GoRo::Wa,
+        t!["Go to ん"] if all_rows => GoRo::N,
+    } {
+        GoRo::Ya => EndYa(),
+        GoRo::Wa => RowWa(),
+        GoRo::N => EndN(),
+    }
+}
+
+#[scene]
+pushdown fn RowWa() -> Ending {
+    s!(
+        who = NAME::A,
+        voice = A::V_WA,
+        render = enter_wa,
+        t!["ここは「わ」です。前のメッセージは「ろ」です。次のメッセージは「ゐ」です。"],
+    );
+    s!(
+        t![
+            "ここは「"
+            ["ゐ"]("wi")
+            "」です。前のメッセージは「わ」です。次のメッセージは「"
+            ["ゑ"]("we")
+            "」です。"
+        ],
+    );
+    s!(
+        t![
+            "ここは「"
+            ["ゑ"]("we")
+            "」です。前のメッセージは「ゐ」です。次のメッセージは「を」、"
+            !["the end"](italic())
+            " です。"
+        ],
+    );
+    EndWo()
+}
+
+#[scene]
+pushdown fn EndYa() -> Ending {
+    CLEARED_YA.write(true);
+    s!(
+        who = NAME::I,
+        voice = I::V_YA,
+        render = end_ya,
+        t![
+            "ここは「や」です。前のメッセージは「ろ」です。次のメッセージはありません。エンディング「や」です!"
+        ],
+    );
+    Ending::Ya
+}
+
+#[scene]
+pushdown fn EndWo() -> Ending {
+    CLEARED_WO.write(true);
+    s!(
+        who = NAME::O,
+        voice = O::V_WO,
+        render = end_wo,
+        t![
+            "ここは「を」です。前のメッセージは「ゑ」です。これでおしまい、エンディング「を」です。"
+        ],
+    );
+    Ending::Wo
+}
+
+#[scene]
+pushdown fn EndN() -> Ending {
+    CLEARED_N.write(true);
+    s!(
+        who = NAME::U,
+        voice = U::V_N,
+        render = end_n,
+        t!["ここは「ん」です。前のメッセージは「ろ」です。最後の文字、エンディング「ん」です!"],
+    );
+    Ending::N
+}
+
+const fn enter_ma(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::MA, MUSIC::SYMPHONY);
+    U.show(&mut screen, U::NORMAL, SLOT::U, ENTER);
+    screen
+}
+
+const fn u_happy(mut screen: Screen) -> Screen {
+    U.face(&mut screen, U::HAPPY, FACE);
+    U.act(&mut screen, jump(30, ms(400)));
+    screen
+}
+
+const fn enter_ra(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::RA, MUSIC::SYMPHONY);
+    O.show(&mut screen, O::NORMAL, SLOT::O, ENTER);
+    screen
+}
+
+const fn o_happy(mut screen: Screen) -> Screen {
+    O.face(&mut screen, O::HAPPY, FACE);
+    screen
+}
+
+/// ん is shown greyed out until は, ば and ぱ rows have all been visited.
+const fn n_locked(mut screen: Screen) -> Screen {
+    screen.choice_menu().disabled_arm(2, t!["Go to ん (visit は・ば・ぱ first)"]);
+    screen
+}
+
+const fn enter_wa(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::WA, MUSIC::SYMPHONY);
+    A.show(&mut screen, A::NORMAL, SLOT::A, ENTER);
+    screen
+}
+
+/// An ending: the stage fades out and the music stops, then the ending background comes in
+/// through white with a fanfare.
+const fn ending(screen: &mut Screen, bg: ImageAsset) {
+    hide_all(screen, tween(ms(400)));
+    screen.music().stop().apply_animation(crossfade(secs(1)));
+    screen.barrier();
+    screen.background().change(bg).apply_animation(through(WHITE, ms(800), ms(200)));
+    screen.play(sound(SE::FANFARE));
+    screen.barrier();
+}
+
+const fn end_ya(mut screen: Screen) -> Screen {
+    ending(&mut screen, BG::END_YA);
+    I.show(&mut screen, I::HAPPY, SLOT::I, ENTER);
+    screen
+}
+
+const fn end_wo(mut screen: Screen) -> Screen {
+    ending(&mut screen, BG::END_WO);
+    O.show(&mut screen, O::HAPPY, SLOT::O, ENTER);
+    screen
+}
+
+const fn end_n(mut screen: Screen) -> Screen {
+    ending(&mut screen, BG::END_N);
+    A.show(&mut screen, A::HAPPY, SLOT::A, ENTER);
+    I.show(&mut screen, I::HAPPY, SLOT::I, ENTER);
+    U.show(&mut screen, U::HAPPY, SLOT::U, ENTER);
+    E.show(&mut screen, E::HAPPY, SLOT::E, ENTER);
+    O.show(&mut screen, O::HAPPY, SLOT::O, ENTER);
+    screen.camera().apply_animation(quake(4, 4, ms(500)));
+    screen
+}

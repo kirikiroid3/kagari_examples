@@ -1,0 +1,264 @@
+//! か row, が row, さ row and ざ row. These rows try the text effects: ruby, bold, colour,
+//! emphasis dots, click waits, pauses with a mark, reveal speed, size, italic, outline and
+//! shadow.
+
+use super::{LAP, Next};
+use crate::effect::{ENTER, FACE, keyframe};
+use crate::scripts::assets::{BG, MUSIC, SE};
+use crate::scripts::characters::{A, E, I, NAME, O, SLOT};
+use std::narrative::Mark;
+use std::narrative::text::{italic, outline, shadow, size, speed};
+
+const RED: Color = rgb(255, 90, 90);
+
+enum GoKo {
+    Sa,
+    Za,
+}
+
+enum GoZo {
+    Ta,
+    Da,
+}
+
+/// The message before か: お on the first lap, と after going back.
+const fn ka_prev(lap: Int<0, 1>) -> Text {
+    if lap == 0 { "お" } else { "と" }
+}
+
+#[scene]
+pub pushdown fn RowKa() -> Next {
+    s!(
+        render = enter_ka,
+        t![
+            "ここは「か」です。前のメッセージは「"
+            {ka_prev(LAP)}
+            "」です。次のメッセージは「き」です。"
+        ],
+    );
+    s!(
+        who = NAME::O,
+        voice = O::V_KI,
+        t![
+            "ここは「き」です。前のメッセージは「か」です。"
+            ["次"]("つぎ")
+            "のメッセージは「く」です。"
+        ],
+    );
+    s!(
+        t![
+            "ここは"
+            !["「く」"](bold().and(color_text(RED)))
+            "(ku) です。前の message は「き」、next は「け」です。"
+        ],
+    );
+    s!(
+        t![
+            "ここは「け」です。前のメッセージは"
+            !["「く」"](dots())
+            "、次のメッセージは「こ」です。"
+        ],
+    );
+    s!(
+        who = NAME::O,
+        render = o_happy,
+        t![
+            "ここは「こ」です。前のメッセージは「け」です。"
+            !["Choice time!"](emphasis())
+            " 次は「さ」か「ざ」です。"
+        ],
+    );
+    match choice!{
+        id = "row_ka",
+        t!["Go to さ"] => GoKo::Sa,
+        t!["Go to ざ"] => GoKo::Za,
+    } {
+        GoKo::Sa => Next::Sa,
+        GoKo::Za => Next::Za,
+    }
+}
+
+#[scene]
+pub pushdown fn RowGa() -> Next {
+    s!(
+        who = NAME::E,
+        voice = E::V_GA,
+        render = enter_ga,
+        t!["ここは「が」です。前のメッセージは「お」です。次のメッセージは「ぎ」です。"],
+    );
+    s!(render = knock, t!["ここは「ぎ」です。前は「が」、次は「ぐ」。……誰かが knock しています。"]);
+    s!(
+        who = NAME::E,
+        render = e_jumps,
+        t![
+            "ここは"
+            !["「ぐ」"](bold())
+            "です。前のメッセージは「ぎ」です。次のメッセージは「げ」です。"
+        ],
+    );
+    s!(
+        t![
+            "ここは「げ」(ge) です。前のメッセージは「ぐ」です。次のメッセージは"
+            !["「ご」"](emphasis())
+            "です。"
+        ],
+    );
+    s!(
+        t![
+            "ここは「ご」です。前のメッセージは「げ」です。選択肢はありません。次のメッセージは「ざ」です。"
+        ],
+    );
+    Next::Za
+}
+
+#[scene]
+pub pushdown fn RowSa() -> Next {
+    s!(
+        who = NAME::A,
+        voice = A::V_SA,
+        render = enter_sa,
+        t!["ここは「さ」です。前のメッセージは「こ」です。次のメッセージは「し」です。"],
+    );
+    s!(
+        who = NAME::A,
+        t![
+            "ここは「し」です。"
+            ["前"]("まえ")
+            "のメッセージは「さ」、"
+            ["後"]("あと")
+            "のメッセージは「す」です。"
+            ["前後"]("ぜん"|"ご")
+            "関係のテスト。"
+        ],
+    );
+    s!(
+        t![
+            "ここは「す」です。"
+            ![""](click_wait())
+            "前のメッセージは「し」です。"
+            ![""](click_wait())
+            "次のメッセージは「せ」です。"
+        ],
+    );
+    s!(
+        who = NAME::A,
+        render = a_happy_at_mark,
+        t![
+            "ここは「せ」です。前のメッセージは「す」です。"
+            ![""](pause(ms(600)).and(mark(1)))
+            "次のメッセージは「そ」です!"
+        ],
+    );
+    s!(
+        t![
+            !["ここは「そ」です。"](speed(ms(120)))
+            "前のメッセージは「せ」です。次のメッセージは「た」です。"
+        ],
+    );
+    Next::Ta
+}
+
+#[scene]
+pub pushdown fn RowZa() -> Next {
+    s!(
+        who = NAME::I,
+        voice = I::V_ZA,
+        render = enter_za,
+        t!["ここは「ざ」です。前のメッセージは「こ」か「ご」です。次のメッセージは「じ」です。"],
+    );
+    s!(
+        t![
+            "ここは"
+            !["「じ」"](size(1.6))
+            "です。前のメッセージは「ざ」です。次のメッセージは「ず」です。"
+        ],
+    );
+    s!(
+        t![
+            "ここは「ず」"
+            !["(zu)"](italic())
+            "です。前のメッセージは「じ」です。次のメッセージは「ぜ」です。"
+        ],
+    );
+    s!(
+        who = NAME::I,
+        render = i_happy,
+        t![
+            "ここは"
+            !["「ぜ」"](outline(rgb(200, 0, 0), 3))
+            "です。前のメッセージは「ず」です。次のメッセージは「ぞ」です。"
+        ],
+    );
+    s!(
+        t![
+            "ここは"
+            !["「ぞ」"](shadow(BLACK, offset(4, 4), 4))
+            "です。前のメッセージは「ぜ」です。次は「た」か「だ」です。"
+        ],
+    );
+    match choice!{
+        id = "row_za",
+        t!["Go to た"] => GoZo::Ta,
+        t!["Go to だ"] => GoZo::Da,
+    } {
+        GoZo::Ta => Next::Ta,
+        GoZo::Da => Next::Da,
+    }
+}
+
+const fn enter_ka(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::KA, MUSIC::NOCTURNE);
+    O.show(&mut screen, O::NORMAL, SLOT::O, ENTER);
+    screen
+}
+
+const fn o_happy(mut screen: Screen) -> Screen {
+    O.face(&mut screen, O::HAPPY, FACE);
+    O.act(&mut screen, nod(20, ms(300)));
+    screen
+}
+
+const fn enter_ga(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::GA, MUSIC::NOCTURNE);
+    E.show(&mut screen, E::NORMAL, SLOT::E, ENTER);
+    screen
+}
+
+const fn knock(mut screen: Screen) -> Screen {
+    screen.play(sound(SE::KNOCK));
+    screen.play(sound(SE::KNOCK).delay(ms(250)));
+    screen.play(sound(SE::KNOCK).volume(0.6).delay(ms(500)));
+    screen
+}
+
+const fn e_jumps(mut screen: Screen) -> Screen {
+    E.face(&mut screen, E::HAPPY, FACE);
+    E.act(&mut screen, jump(40, ms(400)));
+    screen
+}
+
+const fn enter_sa(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::SA, MUSIC::NOCTURNE);
+    A.show(&mut screen, A::NORMAL, SLOT::U, ENTER);
+    screen
+}
+
+/// A smiles when the text reaches mark 1.
+const fn a_happy_at_mark(mut screen: Screen) -> Screen {
+    screen.at_mark(Mark(1));
+    A.face(&mut screen, A::HAPPY, FACE);
+    screen.play(sound(SE::BLIP));
+    screen
+}
+
+const fn enter_za(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::ZA, MUSIC::NOCTURNE);
+    I.show(&mut screen, I::NORMAL, SLOT::I, ENTER);
+    screen
+}
+
+const fn i_happy(mut screen: Screen) -> Screen {
+    I.face(&mut screen, I::HAPPY, FACE);
+    I.move_to(&mut screen, SLOT::U, tween(ms(800)).ease(Easing::InOutSine));
+    screen
+}

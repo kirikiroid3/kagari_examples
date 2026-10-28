@@ -1,0 +1,116 @@
+//! た row and だ row. と can send the story back to か, once.
+
+use super::{LAP, Next};
+use crate::effect::{ENTER, FACE, keyframe};
+use crate::scripts::assets::{BG, MUSIC, SE};
+use crate::scripts::characters::{NAME, O, SLOT, U};
+
+enum GoTa {
+    Na,
+    Ka,
+}
+
+#[scene]
+pub pushdown fn RowTa() -> Next {
+    s!(
+        who = NAME::U,
+        voice = U::V_TA,
+        render = enter_ta,
+        t!["ここは「た」です。前のメッセージは「そ」か「ぞ」です。次のメッセージは「ち」です。"],
+    );
+    s!(t!["ここは「ち」です。" ["前"]("まえ") "は「た」、" ["次"]("つぎ") "は「つ」です。"]);
+    s!(
+        t![
+            "ここは「つ」(tsu) です。前は「ち」、次は「て」。と から か への loop は、これまで "
+            {LAP}
+            " 回です。"
+        ],
+    );
+    s!(
+        who = NAME::U,
+        render = u_runs,
+        t!["ここは「て」です。前のメッセージは「つ」です。次のメッセージは「と」です。"],
+    );
+    if LAP == 0 {
+        s!(
+            t![
+                "ここは「と」です。前のメッセージは「て」です。次は「な」、または一度だけ「か」に戻れます。"
+            ],
+        );
+    } else {
+        s!(t!["ここは「と」です。前のメッセージは「て」です。もう戻れないので、次は「な」です。"]);
+    }
+    match choice!{
+        id = "row_ta",
+        t!["Go to な"] => GoTa::Na,
+        t!["Back to か (once)"] if LAP == 0 => GoTa::Ka,
+    } {
+        GoTa::Na => Next::Na,
+        GoTa::Ka => {
+            LAP += 1;
+            Next::Ka
+        }
+    }
+}
+
+#[scene]
+pub pushdown fn RowDa() -> Next {
+    s!(
+        who = NAME::O,
+        voice = O::V_DA,
+        render = enter_da,
+        t!["ここは「だ」です。前のメッセージは「ぞ」です。次のメッセージは「ぢ」です。"],
+    );
+    s!(
+        t![
+            "ここは"
+            !["「ぢ」(di)"](color_text(rgb(120, 200, 255)))
+            "です。「じ」ではありません。前は「だ」、次は「づ」。"
+        ],
+    );
+    s!(
+        render = radio,
+        t!["ここは「づ」(du) です。前のメッセージは「ぢ」です。次のメッセージは「で」です。"],
+    );
+    s!(
+        who = NAME::O,
+        render = o_shakes,
+        t![
+            "ここは"
+            !["「で」"](bold().and(color_text(rgb(255, 160, 60))))
+            "です。前のメッセージは「づ」です。次のメッセージは「ど」です。"
+        ],
+    );
+    s!(t!["ここは「ど」です。前のメッセージは「で」です。次のメッセージは「な」です。"]);
+    Next::Na
+}
+
+const fn enter_ta(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::TA, MUSIC::NOCTURNE);
+    U.show(&mut screen, U::NORMAL, SLOT::U, ENTER);
+    screen
+}
+
+const fn u_runs(mut screen: Screen) -> Screen {
+    screen.play(sound(SE::WHOOSH));
+    U.face(&mut screen, U::HAPPY, FACE);
+    U.move_to(&mut screen, SLOT::E, tween(ms(1000)).ease(Easing::InOutSine));
+    screen
+}
+
+const fn enter_da(_screen: Screen) -> Screen {
+    let mut screen = keyframe(BG::DA, MUSIC::NOCTURNE);
+    O.show(&mut screen, O::NORMAL, SLOT::O, ENTER);
+    screen
+}
+
+const fn radio(mut screen: Screen) -> Screen {
+    screen.play(sound(SE::STATIC));
+    screen
+}
+
+const fn o_shakes(mut screen: Screen) -> Screen {
+    O.act(&mut screen, shake(12, ms(600), 3));
+    screen.camera().apply_animation(quake(6, 4, ms(400)));
+    screen
+}

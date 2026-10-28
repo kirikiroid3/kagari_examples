@@ -1,0 +1,65 @@
+//! The story: the kana table, one row after another. Every message names itself, the message
+//! before it and the message after it, so the order of the messages can be read from the text.
+//!
+//! あ → か|が, か → さ|ざ, が → ざ, さ → た, ざ → た|だ, た → な|か (once), だ → な,
+//! な → の (hub over は, ば, ぱ) → ま → ら → や|わ|ん, わ → を.
+//! The endings are や, を and ん.
+
+mod finale;
+mod hub;
+mod kasa;
+mod opening;
+mod tada;
+
+/// How the story ended.
+pub enum Ending {
+    Ya,
+    Wo,
+    N,
+}
+
+/// The endings ever reached; the title page counts them for `Main`.
+pub static CLEARED_YA: Meta<bool> = meta(false);
+pub static CLEARED_WO: Meta<bool> = meta(false);
+pub static CLEARED_N: Meta<bool> = meta(false);
+
+/// The row a row hands over to.
+enum Next {
+    Ka,
+    Ga,
+    Sa,
+    Za,
+    Ta,
+    Da,
+    Na,
+    Ma,
+}
+
+/// How many times the story went back from と to か.
+static mut LAP: Int<0, 1> = 0;
+
+/// `cleared` is the number of endings reached in earlier runs; with all three, お offers a
+/// shortcut to ま.
+#[scene]
+#[entry]
+pub pushdown fn Main(cleared: Int<0, 3>) -> Ending {
+    let mut next = opening::RowA(cleared);
+    let mut via_hub = false;
+    loop {
+        next = match next {
+            Next::Ka => kasa::RowKa(),
+            Next::Ga => kasa::RowGa(),
+            Next::Sa => kasa::RowSa(),
+            Next::Za => kasa::RowZa(),
+            Next::Ta => tada::RowTa(),
+            Next::Da => tada::RowDa(),
+            Next::Na => {
+                hub::RowNa();
+                via_hub = true;
+                Next::Ma
+            }
+            Next::Ma => break,
+        };
+    }
+    finale::RowMa(via_hub)
+}

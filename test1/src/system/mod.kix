@@ -1,0 +1,395 @@
+//! The game system: the title page, the game view, save/load, backlog, config and the ending
+//! pages.
+
+use crate::scenario;
+use crate::scenario::{CLEARED_N, CLEARED_WO, CLEARED_YA, Ending};
+use crate::scripts::assets::{BG, MUSIC};
+use std::narrative::{Entry, Line, MenuArm, PlayMode};
+use std::narrative::text::{TextStyle, text_style};
+use std::screen::{BOTTOM_CENTER, CENTER, insets, rgba};
+use std::system::saves;
+use std::system::saves::SaveSlot;
+use std::system::set_music;
+use std::ui::{Align, Fit, each, label, message, scroll, show, thumbnail};
+use std::ui::style::{ButtonStyle, Look, Paint, button_style};
+
+static TEXT_SPEED: Setting<Duration> = setting(ms(30));
+static AUTO_DELAY: Setting<Duration> = setting(ms(1300));
+static AUTO_DELAY_PER_CHAR: Setting<Duration> = setting(ms(60));
+static SKIP_UNREAD: Setting<bool> = setting(false);
+static MASTER: Setting<Volume> = setting(volume(100));
+static MUSIC_VOLUME: Setting<Volume> = setting(volume(60));
+static SOUND: Setting<Volume> = setting(volume(100));
+static VOICE: Setting<Volume> = setting(volume(100));
+static VOICE_SUSTAIN: Setting<bool> = setting(false);
+static WAIT_FOR_VOICE: Setting<bool> = setting(true);
+static WINDOW_OPACITY: Setting<Int<0, 100>> = setting(80);
+static FULLSCREEN: Setting<bool> = setting(false);
+static ANIMATIONS: Setting<bool> = setting(true);
+
+pub fn settings() -> Settings {
+    Settings {
+        text_speed: TEXT_SPEED,
+        auto_delay: AUTO_DELAY,
+        auto_delay_per_char: AUTO_DELAY_PER_CHAR,
+        skip_unread: SKIP_UNREAD,
+        master: MASTER,
+        music: MUSIC_VOLUME,
+        sound: SOUND,
+        voice: VOICE,
+        voice_sustain: VOICE_SUSTAIN,
+        wait_for_voice: WAIT_FOR_VOICE,
+        window_opacity: WINDOW_OPACITY,
+        fullscreen: FULLSCREEN,
+        animations: ANIMATIONS,
+    }
+}
+
+const WINDOW_STYLE: TextStyle = text_style(26, WHITE).hanging_indent(true);
+const NAME_STYLE: TextStyle = text_style(28, hex(0xFFE0A0));
+
+const MENU_BUTTON: ButtonStyle = button_style(Look {
+    background: Paint::None,
+    text: text_style(28, WHITE),
+})
+    .hover(Look { background: Paint::Color(rgb(60, 60, 90)), text: text_style(28, WHITE) })
+    .focus(Look { background: Paint::Color(rgb(60, 60, 90)), text: text_style(28, WHITE) })
+    .change(tween(ms(150)));
+
+const CHOICE_BUTTON: ButtonStyle = button_style(Look {
+    background: Paint::Color(rgb(30, 30, 60)),
+    text: text_style(28, WHITE),
+})
+    .hover(Look { background: Paint::Color(rgb(70, 70, 120)), text: text_style(28, WHITE) })
+    .focus(Look { background: Paint::Color(rgb(70, 70, 120)), text: text_style(28, WHITE) })
+    .change(tween(ms(150)));
+
+// Title.
+
+pub fn Title() -> RootPage {
+    set_music(Some(looped(MUSIC::NOCTURNE)), crossfade(ms(500)));
+    RootPage(layer![
+        image!(fit = Fit::Cover, BG::TITLE).cover(),
+        column![
+            button!{style = MENU_BUTTON, on_click = || start_game(), t!["Start"]},
+            button!{style = MENU_BUTTON, on_click = || nav::call(Load), t!["Load"]},
+            button!{style = MENU_BUTTON, on_click = || nav::call(Config), t!["Config"]},
+            button!{style = MENU_BUTTON, on_click = || nav::dialog(ConfirmQuit), t!["Quit"]},
+            text!(cleared_text()),
+        ]
+            .gap(8)
+            .align(Align::Start, Align::Center)
+            .at(point(640, 590), CENTER),
+    ])
+}
+
+fn mark(cleared: bool) -> Text {
+    if cleared { "✓" } else { "—" }
+}
+
+fn cleared_text() -> Text {
+    t![
+        "Endings: や "
+        {mark(CLEARED_YA.get())}
+        "  を "
+        {mark(CLEARED_WO.get())}
+        "  ん "
+        {mark(CLEARED_N.get())}
+    ]
+}
+
+/// The number of endings reached, the argument of `scenario::Main`.
+fn cleared_count() -> Int<0, 3> {
+    let mut count: Int<0, 3> = 0;
+    if CLEARED_YA.get() {
+        count += 1;
+    }
+    if CLEARED_WO.get() {
+        count += 1;
+    }
+    if CLEARED_N.get() {
+        count += 1;
+    }
+    count
+}
+
+fn start_game() {
+    nav::start(scenario::Main, (cleared_count(),), on_ending)
+}
+
+fn on_ending(ending: Ending) {
+    match ending {
+        Ending::Ya => nav::goto(EndYa),
+        Ending::Wo => nav::goto(EndWo),
+        Ending::N => nav::goto(EndN),
+    }
+}
+
+fn ConfirmQuit() -> Dialog {
+    Dialog(
+        column![
+            t!["Quit the game?"],
+            row![button!{on_click = || nav::quit(), t!["Yes"]}, button!{
+                on_click = || nav::back(),
+                t!["No"],
+            }].gap(24),
+        ]
+            .align(Align::Center, Align::Center)
+            .background(Paint::Color(rgba(0, 0, 0, 200))),
+    )
+}
+
+// Ending pages.
+
+fn ending_page(bg: ImageAsset, name: Text) -> RootPage {
+    RootPage(layer![
+        image!(fit = Fit::Cover, bg).cover(),
+        column![text!(style = text_style(36, WHITE), name), button!{
+            style = MENU_BUTTON,
+            on_click = || nav::goto(Title),
+            t!["Back to title"],
+        }]
+            .gap(16)
+            .align(Align::Start, Align::Center)
+            .at(point(640, 80), CENTER),
+    ])
+}
+
+fn EndYa() -> RootPage {
+    ending_page(BG::END_YA, t!["Ending「や」 reached"])
+}
+
+fn EndWo() -> RootPage {
+    ending_page(BG::END_WO, t!["Ending「を」 reached"])
+}
+
+fn EndN() -> RootPage {
+    ending_page(BG::END_N, t!["Ending「ん」 reached"])
+}
+
+// Game view.
+
+fn who_text(game: Narrative) -> Text {
+    match game.line() {
+        Some(line) => match line.who {
+            Some(who) => who,
+            None => "",
+        },
+        None => "",
+    }
+}
+
+fn menu_arms(game: Narrative) -> Vec<MenuArm> {
+    match game.menu() {
+        Some(menu) => menu.arms,
+        None => Vec::new(),
+    }
+}
+
+fn has_menu(game: Narrative) -> bool {
+    match game.menu() {
+        Some(_) => true,
+        None => false,
+    }
+}
+
+fn arm_button(game: Narrative, arm: MenuArm) -> Element {
+    button!{
+        style = CHOICE_BUTTON,
+        disabled = match arm.arm {
+            Some(_) => false,
+            None => true,
+        },
+        on_click = || match arm.arm {
+            Some(a) => game.select(a),
+            None => {}
+        },
+        label(arm.text),
+    }.width(560)
+}
+
+fn toggle_mode(game: Narrative, mode: PlayMode) {
+    if game.mode() == mode { game.set_mode(PlayMode::Normal) } else { game.set_mode(mode) }
+}
+
+pub fn GameView(game: Narrative) -> Element {
+    let (hidden, set_hidden) = signal(false);
+    layer![
+        game_screen!(game = game).cover(),
+        show(
+            || !hidden(),
+            || column![
+                text!(style = NAME_STYLE, who_text(game)).height(40),
+                message(game, WINDOW_STYLE).height(150),
+                row![
+                    button!{on_click = || game.save(SaveSlot::Quick), t!["Q.Save"]},
+                    button!{
+                        on_click = || {
+                            let _ = nav::load(SaveSlot::Quick);
+                        },
+                        t!["Q.Load"],
+                    },
+                    button!{on_click = || game.call(Save), t!["Save"]},
+                    button!{on_click = || nav::call(Load), t!["Load"]},
+                    button!{on_click = || toggle_mode(game, PlayMode::Auto), t!["Auto"]},
+                    button!{on_click = || toggle_mode(game, PlayMode::Skip), t!["Skip"]},
+                    button!{on_click = || game.call(Backlog), t!["Log"]},
+                    button!{on_click = || nav::call(Config), t!["Config"]},
+                    button!{on_click = || set_hidden(true), t!["Hide"]},
+                    button!{on_click = || nav::goto(Title), t!["Title"]},
+                ].gap(8),
+            ]
+                .width(1200)
+                .height(250)
+                .padding(insets(10, 40, 10, 40))
+                .background(Paint::Color(rgba(0, 0, 0, 205))),
+        ).at(point(640, 716), BOTTOM_CENTER),
+        show(
+            || has_menu(game),
+            || each(|| menu_arms(game), |arm| arm_button(game, arm)).gap(16),
+        ).at(point(640, 200), CENTER),
+        show(
+            || hidden(),
+            || button!{on_click = || set_hidden(false)}.width(1280).height(720),
+        ).cover(),
+    ]
+}
+
+// Save, load, backlog and config.
+
+fn slot_text(slot: SaveSlot) -> Text {
+    match saves::info(slot) {
+        Some(info) => match info.text {
+            Some(text) => text,
+            None => "",
+        },
+        None => "Empty",
+    }
+}
+
+fn slots() -> Vec<u32> {
+    let mut list = Vec::new();
+    for k in 0..20 {
+        list.push(k);
+    }
+    list
+}
+
+fn slot_view(slot: SaveSlot) -> Element {
+    row![thumbnail(slot).width(160).height(90), text!(slot_text(slot))].gap(16)
+}
+
+fn Save(game: Narrative) -> GameOverlay {
+    GameOverlay(
+        column![
+            scroll(
+                || each(
+                    || slots(),
+                    |k| row![
+                        button!{
+                            on_click = || game.save(SaveSlot::Manual(k)),
+                            slot_view(SaveSlot::Manual(k)),
+                        },
+                        button!{on_click = || saves::delete(SaveSlot::Manual(k)), t!["Delete"]},
+                    ],
+                ),
+            ).grow(1),
+            button!{on_click = || nav::back(), t!["Back"]},
+        ].background(Paint::Color(rgba(0, 0, 0, 200))),
+    )
+}
+
+fn Load() -> Overlay {
+    let (error, set_error) = signal("");
+    Overlay(
+        column![
+            scroll(
+                || each(
+                    || slots(),
+                    |k| button!{
+                        on_click = || match nav::load(SaveSlot::Manual(k)) {
+                            Ok(()) => {}
+                            Err(divergence) => set_error(divergence.describe()),
+                        },
+                        slot_view(SaveSlot::Manual(k)),
+                    },
+                ),
+            ).grow(1),
+            text!(error()),
+            button!{on_click = || nav::back(), t!["Back"]},
+        ].background(Paint::Color(rgba(0, 0, 0, 200))),
+    )
+}
+
+fn line_text(line: Line) -> Text {
+    match line.text {
+        Some(text) => text,
+        None => "",
+    }
+}
+
+fn entry_view(entry: Entry) -> Element {
+    match entry {
+        Entry::Line(line) => text!(line_text(line)),
+        Entry::Chosen(text) => label(text),
+    }
+}
+
+fn Backlog(game: Narrative) -> GameOverlay {
+    GameOverlay(
+        column![scroll(|| each(|| game.history(), |entry| entry_view(entry))).grow(1), button!{
+            on_click = || nav::back(),
+            t!["Close"],
+        }]
+            .padding(insets(24, 40, 24, 40))
+            .background(Paint::Color(rgba(0, 0, 0, 220))),
+    )
+}
+
+fn volume_row(name: Text, handle: Setting<Volume>) -> Element {
+    row![
+        label(name).width(200),
+        slider!{
+            value = handle.get().level,
+            on_change = |v| handle.set(Volume { level: v, muted: handle.get().muted }),
+        }.width(400),
+        toggle!{
+            value = handle.get().muted,
+            on_change = |m| handle.set(Volume { level: handle.get().level, muted: m }),
+            t!["Mute"],
+        },
+    ]
+        .gap(16)
+        .align(Align::Start, Align::Center)
+}
+
+fn speed_button(name: Text, handle: Setting<Duration>, value: Duration) -> Element {
+    toggle!{value = handle.get().ms == value.ms, on_change = |_on| handle.set(value), label(name)}
+}
+
+fn Config() -> Overlay {
+    Overlay(
+        column![
+            volume_row("Music", MUSIC_VOLUME),
+            volume_row("Sound", SOUND),
+            volume_row("Voice", VOICE),
+            row![
+                label("Text speed").width(200),
+                speed_button("Slow", TEXT_SPEED, ms(60)),
+                speed_button("Normal", TEXT_SPEED, ms(30)),
+                speed_button("Fast", TEXT_SPEED, ms(10)),
+                speed_button("Instant", TEXT_SPEED, ms(0)),
+            ].gap(8),
+            toggle!{
+                value = SKIP_UNREAD.get(),
+                on_change = |v| SKIP_UNREAD.set(v),
+                t!["Skip unread text"],
+            },
+            toggle!{value = FULLSCREEN.get(), on_change = |v| FULLSCREEN.set(v), t!["Fullscreen"]},
+            button!{on_click = || nav::back(), t!["Back"]},
+        ]
+            .gap(16)
+            .padding(insets(40, 80, 40, 80))
+            .background(Paint::Color(rgba(0, 0, 0, 220))),
+    )
+}
